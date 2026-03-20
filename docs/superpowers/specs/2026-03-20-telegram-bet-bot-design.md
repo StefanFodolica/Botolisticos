@@ -2,7 +2,7 @@
 
 ## Overview
 
-A Telegram bot for a private betting group that monitors for bet slip screenshots submitted via `/bet [amount]` command, uses Claude Sonnet Vision API to parse bet slip contents (matches, selections, odds), validates the data, and logs everything to Google Sheets. Photos are preserved on Google Drive. An admin approval flow ensures only validated bets reach the main ledger, with automatic balance tracking per user.
+A Telegram bot for a private betting group that monitors for bet slip screenshots submitted via `/bet [amount]` command, uses Claude Sonnet Vision API to parse bet slip contents (matches, selections, odds), validates the data, and logs everything to Google Sheets. An admin approval flow ensures only validated bets reach the main ledger, with automatic balance tracking per user.
 
 ## Target Scale
 
@@ -23,20 +23,18 @@ PYTHON BOT (Railway, ~$5/mo)
     ├── vision.py       — image resize/compress + Claude Sonnet API
     ├── validation.py   — odds check, duplicate detection
     ├── sheets.py       — Google Sheets CRUD
-    ├── drive.py        — Google Drive photo upload
     ├── models.py       — BetSlip, Leg dataclasses
     └── config.py       — env vars loading
     │
     ├──► CLAUDE SONNET API  (image parsing, ~$4-6/mo)
-    ├──► GOOGLE SHEETS      (PENDING, MAIN, FLAGGED, BALANCE)
-    └──► GOOGLE DRIVE       (daily photo backup)
+    └──► GOOGLE SHEETS      (PENDING, MAIN, FLAGGED, BALANCE)
 ```
 
 ### Key Architecture Decisions
 
 - **Polling, not webhooks** — simplest to deploy, no public URL or HTTPS needed. `application.run_polling()` handles the loop. Latency of 1-2 sec is irrelevant for this use case.
 - **No buffer system** — every bet submission requires `/bet [amount]` as a photo caption or as a reply to a photo. Eliminates complexity of tracking unclaimed photos in a chatty group.
-- **Single Python process** — no web server, no background workers, no task queues. One process polls Telegram, processes bets synchronously, writes to Sheets/Drive.
+- **Single Python process** — no web server, no background workers, no task queues. One process polls Telegram, processes bets synchronously, writes to Sheets.
 
 ## Bet Input Methods
 
@@ -59,14 +57,13 @@ PYTHON BOT (Railway, ~$5/mo)
 
 When a user sends `/bet 50` with photos:
 
-1. **Handler** — extracts amount, optional currency (default RON), optional context text, all attached photos
+1. **Handler** — extracts amount, optional currency (default RON), optional context text, all attached photos, and the Telegram message timestamp
 2. **Download photos** — fetches from Telegram API at highest resolution
-3. **Upload originals to Google Drive** — saved to daily folder (e.g., `2026-03-20/`) as `{username}_{timestamp}.jpg`. Full resolution preserved for evidence.
-4. **Resize & compress for Vision API** — scale to ~800px longest side, strip EXIF metadata, re-encode JPEG at 85% quality
-5. **Send to Claude Sonnet** — all photos batched in one API request with a structured prompt requesting JSON output
-6. **Validate** — odds multiplication check, duplicate check
-7. **Write to Google Sheets** — valid → PENDING sheet, invalid → FLAGGED sheet (with reason)
-8. **Reply in chat** — valid: "✅ Bilet inregistrat" / flagged: silent / no photo: error message
+3. **Resize & compress for Vision API** — scale to ~800px longest side, strip EXIF metadata, re-encode JPEG at 85% quality
+4. **Send to Claude Sonnet** — all photos batched in one API request with a structured prompt requesting JSON output
+5. **Validate** — odds multiplication check, duplicate check, pre-match time check
+6. **Write to Google Sheets** — valid → PENDING sheet, invalid → FLAGGED sheet (with reason)
+7. **Reply in chat** — valid: "✅ Bilet inregistrat" / flagged: silent / no photo: error message
 
 For reply-to-photo: same flow, but the replier is logged as the bettor and photos come from the replied-to message.
 
@@ -88,16 +85,19 @@ The Vision prompt asks Sonnet to return structured JSON:
 {
   "source": "Superbet",
   "bet_type": "multi",
+  "is_live": false,
   "legs": [
     {
       "event": "UTA - FCSB",
       "selection": "FCSB peste 5.5 cornere",
-      "odds": 1.85
+      "odds": 1.85,
+      "match_time": "2026-03-21T18:00"
     },
     {
       "event": "Arsenal - Chelsea",
       "selection": "Peste 7.5 cornere",
-      "odds": 1.62
+      "odds": 1.62,
+      "match_time": "2026-03-21T20:45"
     }
   ],
   "total_odds": 29.29,
@@ -113,7 +113,8 @@ The Vision prompt asks Sonnet to return structured JSON:
 - Bet builders / same-game multis
 - Any sport or esport (football, tennis, CS2, LoL, Valorant, etc.)
 - Any language on the slip (Romanian, English, mixed)
-- Live bets (allowed, no time validation)
+- Live bets (allowed, skip time validation)
+- Pre-match bets (match time extracted and validated against current time)
 
 ### Non-Standard Sources
 
@@ -125,7 +126,8 @@ All validation is silent — failures go to FLAGGED sheet, no message in group c
 
 1. **Odds multiplication check** — where per-leg odds are visible, multiply all leg odds and compare to total odds. Tolerance: ±0.02. Mismatch → FLAGGED with MOTIV "odds mismatch".
 2. **Duplicate check** — same user + same legs (events + selections) + same odds within 24 hours → FLAGGED with MOTIV "duplicate".
-3. **Incomplete extraction** — Vision AI can't extract meaningful event/selection data → FLAGGED with MOTIV "incomplete".
+3. **Pre-match time check** — if the bet is identified as pre-match (not live) and the Vision AI extracted a match time, compare to the Telegram message timestamp (Romania time, Europe/Bucharest). If the match time is in the past → FLAGGED with MOTIV "pre-match expired". Live bets skip this check entirely. If no match time is visible on the slip, skip this check.
+4. **Incomplete extraction** — Vision AI can't extract meaningful event/selection data → FLAGGED with MOTIV "incomplete".
 
 ## Google Sheets Structure
 
@@ -135,28 +137,31 @@ One Google Sheets document with 4 sheets.
 
 Bot writes here. Admin reviews and curates (deletes invalid rows). `/approve` clears it.
 
-| DATA | PARIOR | Meci | PARIU | COTA | MIZA |
-|------|--------|------|-------|------|------|
+| DATA | ORA | PARIOR | Meci | PARIU | COTA | MIZA |
+|------|-----|--------|------|-------|------|------|
+
+ORA = Telegram message timestamp (HH:MM, Romania time). Lets admin verify when the bet was actually submitted.
 
 ### MAIN Sheet
 
-Approved bets. Same 6 columns + STATUS + CASTIG. Bot writes the 6 columns only. STATUS and CASTIG are manual/formula — bot never touches them.
+Approved bets. Same 7 columns + STATUS + CASTIG. Bot writes the 7 columns only. STATUS and CASTIG are manual/formula — bot never touches them.
 
-| DATA | PARIOR | Meci | PARIU | COTA | MIZA | STATUS | CASTIG |
-|------|--------|------|-------|------|------|--------|--------|
+| DATA | ORA | PARIOR | Meci | PARIU | COTA | MIZA | STATUS | CASTIG |
+|------|-----|--------|------|-------|------|------|--------|--------|
 
 ### FLAGGED Sheet
 
-Silent failures. Same 6 columns + MOTIV (reason for flagging).
+Silent failures. Same 7 columns + MOTIV (reason for flagging).
 
-| DATA | PARIOR | Meci | PARIU | COTA | MIZA | MOTIV |
-|------|--------|------|-------|------|------|-------|
+| DATA | ORA | PARIOR | Meci | PARIU | COTA | MIZA | MOTIV |
+|------|-----|--------|------|-------|------|------|-------|
 
 ### Column Format
 
 **Single bet:**
 ```
 DATA:   01.03.2026
+ORA:    14:32
 PARIOR: Georo
 Meci:   Dinamo - FC Arges
 PARIU:  Karamoko 3+ pe poarta, 1 castiga
@@ -167,6 +172,7 @@ MIZA:   50.00 RON
 **Multi-leg bet** (newlines within Meci and PARIU cells):
 ```
 DATA:   01.03.2026
+ORA:    19:15
 PARIOR: Foitos
 Meci:   UTA - FCSB
         Arsenal - Chelsea
@@ -181,6 +187,7 @@ MIZA:   20.00 RON
 **Informal bet (social media, esports):**
 ```
 DATA:   20.03.2026
+ORA:    10:05
 PARIOR: Alex
 Meci:   IEM Katowice 2026
 PARIU:  NAVI to win
@@ -226,7 +233,7 @@ Admin identified by Telegram user ID configured in environment variables.
 ## /approve Flow
 
 1. Read all rows from PENDING sheet
-2. Append all rows to MAIN sheet (6 columns only — STATUS and CASTIG left empty for admin)
+2. Append all rows to MAIN sheet (7 columns only — STATUS and CASTIG left empty for admin)
 3. For each row: find PARIOR's column in BALANCE (via Row 1 ID mapping), append negative MIZA amount to next empty cell in that column
 4. Clear PENDING sheet
 
@@ -242,14 +249,6 @@ No validation or reformatting — admin has already ensured PENDING contents are
 | `/bet` from unknown user (not in BALANCE Row 1) | "Nu esti inregistrat. Contacteaza adminul." |
 | All other messages | Bot stays completely silent |
 
-## Photo Storage (Google Drive)
-
-- Bot downloads every submitted photo at full resolution from Telegram API
-- Uploads originals to Google Drive in daily folders (e.g., `2026-03-20/`)
-- Naming: `{username}_{timestamp}.jpg`
-- Full resolution preserved for evidence
-- Compressed copies (800px, 85% JPEG) used only for Vision API, not stored
-
 ## Error Handling
 
 Simple approach — one retry, then fail gracefully:
@@ -258,7 +257,6 @@ Simple approach — one retry, then fail gracefully:
 |---------|----------|
 | Claude API error | Retry once. If still failing, flag bet with MOTIV "API error", reply "Incearca din nou mai tarziu" |
 | Google Sheets API error | Retry once. Log error, reply "Eroare temporara, incearca din nou" |
-| Google Drive upload fails | Don't block bet processing. Log error, continue with parsing and Sheets write |
 | Photo download fails | Reply "Nu am putut descarca poza, trimite din nou" |
 | Unhandled exception | Catch at top level, log, don't crash the polling loop |
 
@@ -270,10 +268,9 @@ No retry queues or dead letter systems. If something fails, the user resubmits.
 - **Telegram:** python-telegram-bot (polling mode)
 - **Vision AI:** Anthropic SDK — Claude Sonnet, with image preprocessing (Pillow for resize/compress)
 - **Google Sheets:** gspread + Google service account
-- **Google Drive:** Google Drive API (via google-api-python-client or PyDrive2)
 - **Image processing:** Pillow (resize, EXIF strip, JPEG recompress)
 - **Hosting:** Railway (Hobby plan, ~$5/mo)
-- **Config:** Environment variables (bot token, Anthropic API key, Google service account JSON, sheet ID, Drive folder ID, admin user IDs)
+- **Config:** Environment variables (bot token, Anthropic API key, Google service account JSON, sheet ID, admin user IDs)
 
 ## Project Structure
 
@@ -286,7 +283,6 @@ telegram-bet-bot/
 │   ├── vision.py            # Image resize/compress + Claude Sonnet API
 │   ├── validation.py        # Odds check, duplicate detection
 │   ├── sheets.py            # Google Sheets CRUD (PENDING, MAIN, FLAGGED, BALANCE)
-│   ├── drive.py             # Google Drive photo upload (daily folders)
 │   └── models.py            # BetSlip, Leg dataclasses
 ├── config.py                # Environment/config loading
 ├── requirements.txt
@@ -297,7 +293,7 @@ telegram-bet-bot/
 ## What the Bot Does NOT Do
 
 - No `/settle` command — results managed manually in sheet
-- No time/match validation (live bets allowed)
+- No match result validation (live bets allowed, pre-match time is validated)
 - No currency conversion
 - No cashouts or system bets
 - No balance limits (negative balances allowed)
@@ -310,4 +306,4 @@ telegram-bet-bot/
 
 - **Telegram bot token** — create via BotFather (free, 2 minutes)
 - **Anthropic API key** — sign up at console.anthropic.com (pay-per-use)
-- **Google Cloud service account** — already available (for Sheets + Drive access)
+- **Google Cloud service account** — already available (for Sheets access)
