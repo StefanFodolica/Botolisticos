@@ -1,0 +1,186 @@
+● Project Description: Telegram Bet Slip Bot
+
+  Overview
+
+  A Telegram bot for a private betting group that monitors for bet slip screenshots submitted via /bet [amount] command,
+   uses Claude Vision API to parse bet slip contents (matches, selections, odds), validates the data, and logs
+  everything to Google Sheets. Photos are preserved on Google Drive. An admin approval flow ensures only validated bets
+  reach the main ledger, with automatic balance tracking per user.
+
+  Core Flow
+
+  User sends photo(s) with /bet [amount] [currency?] caption
+    → Bot downloads photos → saves to Google Drive (daily folders)
+    → Bot sends photos to Claude Vision API
+    → Vision AI extracts: source, bet type, matches/events, selections, odds
+    → Bot validates odds where possible (leg multiplication check ±0.02)
+    → Bot checks for duplicates (same user, same legs+odds within 24h)
+    → Valid → PENDING sheet, bot confirms "✅ Bilet inregistrat"
+    → Invalid → FLAGGED sheet silently (no group message)
+
+  Admin reviews PENDING sheet, deletes invalid rows
+  Admin runs /approve
+    → Moves remaining PENDING rows → MAIN sheet
+    → Deducts stakes from BALANCE sheet
+
+  Bet Input Methods
+
+  ┌─────────────────────────────────────────┬─────────────────────────────────────────────────────────────┐
+  │                Scenario                 │                          Handling                           │
+  ├─────────────────────────────────────────┼─────────────────────────────────────────────────────────────┤
+  │ Photo(s) with /bet 50 caption           │ Immediate processing                                        │
+  ├─────────────────────────────────────────┼─────────────────────────────────────────────────────────────┤
+  │ Media group with /bet 50 on first photo │ Immediate, all photos grouped                               │
+  ├─────────────────────────────────────────┼─────────────────────────────────────────────────────────────┤
+  │ Photos sent one by one, no caption      │ Per-user buffer (90 sec), waits for /bet follow-up          │
+  ├─────────────────────────────────────────┼─────────────────────────────────────────────────────────────┤
+  │ Reply to someone's photo with /bet 25   │ Replier is logged as the bettor                             │
+  ├─────────────────────────────────────────┼─────────────────────────────────────────────────────────────┤
+  │ /bet with no photo context              │ Bot replies: "Trimite biletul (foto) cu /bet [suma]"        │
+  ├─────────────────────────────────────────┼─────────────────────────────────────────────────────────────┤
+  │ Buffer timeout, no /bet received        │ Bot replies: "Adauga /bet [suma] ca sa inregistrez biletul" │
+  └─────────────────────────────────────────┴─────────────────────────────────────────────────────────────┘
+
+  Vision AI Parsing
+
+  The bot sends all photos to Claude Vision API with a structured prompt. It must handle:
+
+  - Bet slip summaries — standard bookmaker view with all legs, odds, total
+  - Market selection screens — user screenshotted odds from the market menu before placing
+  - Bet history views — from "My Bets" section, different layout
+  - Bet builders / same-game multis — multiple selections within one match
+  - Social media screenshots — Instagram posts, Twitter/X posts, tournament odds graphics. User might screenshot an
+  esports tournament bracket or odds post and bet on a specific outcome (e.g., "10 lei pe NAVI")
+  - Informal/non-bookmaker sources — any image that contains identifiable odds or events
+  - Any bookmaker — Betano, Superbet, bet365, Unibet, etc.
+  - Any sport or esport — football, tennis, CS2, League of Legends, Valorant, etc.
+  - Any language on the slip — Romanian, English, mixed
+  - Live bets — allowed, no time validation
+  - Multi-photo slips — all images sent to Vision API in one request
+
+  For non-standard sources (Instagram posts, tournament graphics), the Vision AI extracts whatever event/selection info
+  is visible from the image, and the user's /bet message provides additional context (e.g., /bet 10 pe NAVI → text after
+   the amount is the selection).
+
+  Validation Rules
+
+  - Odds check: Where per-leg odds are visible, multiply and compare to total (±0.02 tolerance). Mismatch → FLAGGED
+  silently.
+  - Duplicate check: Same user, same legs + same odds within 24h → FLAGGED silently.
+  - Incomplete slip: Can't extract meaningful event/selection info → FLAGGED silently.
+  - All flagging is silent. No message in group chat. Admin reviews FLAGGED sheet independently.
+
+  Google Sheets Structure
+
+  One Google Sheets document with 4 sheets:
+
+  PENDING Sheet (bot writes here)
+
+  ┌──────┬────────┬──────┬───────┬──────┬──────┐
+  │ DATA │ PARIOR │ Meci │ PARIU │ COTA │ MIZA │
+  ├──────┼────────┼──────┼───────┼──────┼──────┤
+  └──────┴────────┴──────┴───────┴──────┴──────┘
+
+  MAIN Sheet (approved bets)
+
+  Same 6 columns + STATUS (manual) + CASTIG (formula). Bot does not touch STATUS or CASTIG.
+
+  FLAGGED Sheet
+
+  Same 6 columns + MOTIV (reason for flagging).
+
+  BALANCE Sheet
+
+  Pure numbers only. One column per user. Each row is a signed number — no descriptions, no text.
+
+  User A | User B | User C
+    -50  |        |
+   +100  |   -25  |
+    -30  |        |   -10
+
+  Admin's formulas calculate running balances.
+
+  Column Details
+
+  Single bet:
+  01.03.2026 | Georo | Dinamo - FC Arges | Karamoko 3+ pe poarta, 1 castiga | 4.10 | 50.00 RON
+
+  Multi-leg bet (60-space separator within Meci and PARIU cells for text wrap):
+  01.03.2026 | Foitos | UTA - FCSB[60 spaces]Arsenal - Chelsea[60 spaces]Dinamo - FC Arges | FCSB peste 5.5...[60
+  spaces]Peste 7.5...[60 spaces]Peste 6.5... | 29.29 | 20.00 RON
+
+  Social media / informal bet:
+  20.03.2026 | Alex | IEM Katowice 2026 | NAVI to win | 3.50 | 10.00 RON
+
+  - Meci and PARIU use 60-space separator between entries for multi-leg bets
+  - COTA is always total/combined odds. For informal bets where odds aren't visible, left blank for admin to fill
+  - MIZA includes currency. Default RON if user only specifies a number. Other currencies stored as-is, no conversion
+
+  Commands
+
+  ┌─────────────────────────────────┬──────────┬────────────────────────────────────────────────────────────────────┐
+  │             Command             │  Scope   │                            Description                             │
+  ├─────────────────────────────────┼──────────┼────────────────────────────────────────────────────────────────────┤
+  │ /bet [amount] [currency?]       │ All      │ Submit a bet — photo caption or reply. Text after amount used as   │
+  │ [optional context]              │ users    │ context for non-standard screenshots                               │
+  ├─────────────────────────────────┼──────────┼────────────────────────────────────────────────────────────────────┤
+  │ /approve                        │ Admin    │ Move all PENDING → MAIN, deduct stakes from BALANCE                │
+  │                                 │ only     │                                                                    │
+  └─────────────────────────────────┴──────────┴────────────────────────────────────────────────────────────────────┘
+
+  Admin identified by Telegram user ID. No other commands exposed to users.
+
+  Bot Chat Behavior
+
+  - Valid bet parsed: "✅ Bilet inregistrat"
+  - Flagged bet: Nothing. Silent write to FLAGGED sheet.
+  - No photo with /bet: "Trimite biletul (foto) cu /bet [suma]"
+  - Buffer timeout: "Adauga /bet [suma] ca sa inregistrez biletul"
+  - All other messages: Bot stays completely silent.
+
+  Photo Storage
+
+  - Bot downloads every submitted photo via Telegram API
+  - Uploads to Google Drive in daily folders (e.g., 2026-03-20/)
+  - Naming: {username}_{timestamp}.jpg
+  - Survives Telegram message deletion
+
+  Tech Stack
+
+  - Language: Python 3.11+
+  - Telegram: python-telegram-bot library
+  - Vision AI: Anthropic SDK — Claude Sonnet for image parsing
+  - Google Sheets: gspread + Google service account
+  - Google Drive: Google Drive API for photo backup
+  - Hosting: Railway / Fly.io / VPS (~$5/mo)
+  - Config: Environment variables (bot token, API keys, sheet ID, admin user IDs)
+
+  Project Structure
+
+  telegram-bet-bot/
+  ├── bot/
+  │   ├── __init__.py
+  │   ├── main.py              # Entry point, bot setup
+  │   ├── handlers.py          # Telegram message/command handlers
+  │   ├── buffer.py            # Per-user photo buffer logic (90-sec window)
+  │   ├── vision.py            # Claude Vision API — slip parsing
+  │   ├── validation.py        # Odds check, duplicate detection
+  │   ├── sheets.py            # Google Sheets (PENDING, MAIN, FLAGGED, BALANCE)
+  │   ├── drive.py             # Google Drive photo upload (daily folders)
+  │   └── models.py            # Data models (BetSlip, Leg, etc.)
+  ├── config.py                # Environment/config loading
+  ├── requirements.txt
+  ├── .env.example
+  └── README.md
+
+  What the Bot Does NOT Do
+
+  - No /settle command — results managed manually in sheet
+  - No time/match validation (live bets allowed)
+  - No currency conversion
+  - No cashouts
+  - No system bets
+  - No balance limits (negative balances allowed)
+  - No user self-registration (admin adds manually)
+  - No group messages for flagged bets
+  - Does not write to STATUS or CASTIG columns
