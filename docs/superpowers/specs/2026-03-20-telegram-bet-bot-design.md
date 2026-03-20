@@ -43,7 +43,7 @@ PYTHON BOT (Railway, ~$5/mo)
 | Scenario | Handling |
 |----------|----------|
 | Photo(s) with `/bet 50` caption | Process immediately |
-| Media group with `/bet 50` on first photo | All photos grouped, process immediately |
+| Media group with `/bet 50` on first photo | Collect all photos (~2 sec delay for Telegram to deliver all updates via `media_group_id`), then process as one bet |
 | Reply to someone's photo with `/bet 25` | Replier is logged as the bettor |
 | `/bet` with no photo context | Bot replies: "Trimite biletul (foto) cu /bet [suma]" |
 
@@ -239,6 +239,7 @@ No validation or reformatting — admin has already ensured PENDING contents are
 | Valid bet parsed | "✅ Bilet inregistrat" |
 | Flagged bet | Silent — writes to FLAGGED sheet only |
 | `/bet` with no photo | "Trimite biletul (foto) cu /bet [suma]" |
+| `/bet` from unknown user (not in BALANCE Row 1) | "Nu esti inregistrat. Contacteaza adminul." |
 | All other messages | Bot stays completely silent |
 
 ## Photo Storage (Google Drive)
