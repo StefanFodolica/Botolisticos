@@ -35,9 +35,15 @@ Return ONLY valid JSON with this exact schema:
 }
 
 CRITICAL RULES for parsing Romanian bet slips:
+- ONLY extract bets that are actually SELECTED — look for:
+  1. Highlighted/colored odds buttons (the selected odds are visually distinct)
+  2. The bet cart/slip bar at the bottom of the screen (shows "Cotă totală", "Miza", "Pariază acum", etc.)
+  3. A confirmed bet slip showing placed bets
+- Do NOT extract matches that are merely visible on screen but not selected. The user may screenshot the matches list — only the ones with highlighted odds or shown in the bet cart count.
 - "event" MUST be the actual match/game (the teams or players), formatted as "Team A - Team B". Do NOT put the league, tournament, or sport name here. Romanian slips typically show the sport/league on one line and the teams on separate lines below it.
-- "selection" is the specific bet placed — look for labels like "Câștigător", "Rezultat final", "Total goluri", "Handicap", etc. The selection is usually shown at the bottom of each leg alongside the odds. Include the chosen outcome (e.g. "Câștigător Parivision", "1", "Over 2.5").
-- "is_live" should be true if the slip shows "LIVE", "In-Play", or similar.
+- "selection" is the specific bet placed — look for labels like "Câștigător", "Rezultat final", "Total goluri", "Handicap", "1", "X", "2", etc. The selection is usually shown in the bet cart at the bottom or highlighted on the match. Include the chosen outcome (e.g. "Câștigător Parivision", "1", "Over 2.5", "2").
+- If the same match appears both in the main list (with a highlighted selection) AND in the bottom bet cart, treat it as ONE leg — do not duplicate it.
+- "is_live" should be true if the slip shows "LIVE", "In-Play", "Repriza", or a running match clock.
 - "match_time" should be the scheduled start time if visible. Use format YYYY-MM-DDTHH:MM. Interpret times as Romania time (Europe/Bucharest). If relative (e.g., "Astăzi, 20:35" or "maine"), resolve relative to today.
 - "odds" per leg should be null if not individually visible.
 - "total_odds" is the combined/total odds shown on the slip (often labeled "Cotă totală"). Null if not visible.
