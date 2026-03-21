@@ -35,21 +35,23 @@ Return ONLY valid JSON with this exact schema:
 }
 
 CRITICAL RULES for parsing Romanian bet slips:
-- ONLY extract bets that are actually SELECTED — look for:
-  1. Highlighted/colored odds buttons (the selected odds are visually distinct)
-  2. The bet cart/slip bar at the bottom of the screen (shows "Cotă totală", "Miza", "Pariază acum", etc.)
-  3. A confirmed bet slip showing placed bets
-- Do NOT extract matches that are merely visible on screen but not selected. The user may screenshot the matches list — only the ones with highlighted odds or shown in the bet cart count.
-- "event" MUST be the actual match/game (the teams or players), formatted as "Team A - Team B". Do NOT put the league, tournament, or sport name here. Romanian slips typically show the sport/league on one line and the teams on separate lines below it.
-- "selection" is the specific bet placed — look for labels like "Câștigător", "Rezultat final", "Total goluri", "Handicap", "1", "X", "2", etc. The selection is usually shown in the bet cart at the bottom or highlighted on the match. Include the chosen outcome (e.g. "Câștigător Parivision", "1", "Over 2.5", "2").
-- If the same match appears both in the main list (with a highlighted selection) AND in the bottom bet cart, treat it as ONE leg — do not duplicate it.
-- "is_live" should be true if the slip shows "LIVE", "In-Play", "Repriza", or a running match clock.
-- "match_time" should be the scheduled start time if visible. Use format YYYY-MM-DDTHH:MM. Interpret times as Romania time (Europe/Bucharest). If relative (e.g., "Astăzi, 20:35" or "maine"), resolve relative to today.
-- "odds" per leg should be null if not individually visible.
-- "total_odds" is the combined/total odds shown on the slip (often labeled "Cotă totală"). Null if not visible.
-- For multi-leg bets, list each leg separately.
-- Ignore any stake amount shown on the slip.
-- Set "extractable" to false only if you cannot identify ANY event or selection from the image.
+
+PRIORITY: If a bet cart/slip is visible at the bottom of the screen (showing "Cotă totală", "Miza", "Pariază acum", etc.), use it as your PRIMARY source. The bet cart is the most accurate summary — it lists each selected bet with match name, market, selection, and odds. Extract legs ONLY from the bet cart and ignore the matches list above it.
+
+If there is NO bet cart (e.g. a confirmed/placed bet slip or a dedicated slip view), then extract from the slip directly.
+
+For each leg:
+- "event" = the match (teams/players) formatted as "Team A - Team B". NEVER put league/tournament/sport names here.
+- "selection" = the specific outcome chosen (e.g. "1", "X", "2", "Over 2.5", "Câștigător Team A"). In Romanian apps, the bet cart shows this as: market type (e.g. "Final", "Câștigător") followed by the pick.
+- "odds" = the numeric odds for this leg. In the bet cart, odds are shown next to each selection.
+
+Other rules:
+- Each unique match = ONE leg. Never duplicate a match.
+- "total_odds" = the combined odds (labeled "Cotă totală" or "Cotă"). For single bets, this equals the leg odds.
+- "is_live" = true if the slip shows "LIVE", "In-Play", "Repriza", or a running match clock.
+- "match_time" = scheduled start time if visible (format YYYY-MM-DDTHH:MM, Romania time). Resolve relative dates ("Astăzi", "maine") relative to today.
+- Ignore any stake/miza amount shown on the slip.
+- Set "extractable" to false only if you cannot identify ANY event or selection.
 - Return ONLY the JSON object, no markdown fencing, no explanation."""
 
 
