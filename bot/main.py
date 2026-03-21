@@ -20,9 +20,13 @@ logger = logging.getLogger(__name__)
 def main() -> None:
     cfg = Config.from_env()
 
-    # Load Google service account
-    with open(cfg.google_service_account_json) as f:
-        sa_info = json.load(f)
+    # Load Google service account (file path locally, raw JSON on Railway)
+    raw = cfg.google_service_account_json
+    if raw.strip().startswith("{"):
+        sa_info = json.loads(raw)
+    else:
+        with open(raw) as f:
+            sa_info = json.load(f)
 
     sheets = SheetsClient(service_account_info=sa_info, sheet_id=cfg.google_sheet_id)
 
