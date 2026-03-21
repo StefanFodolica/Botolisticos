@@ -42,11 +42,18 @@ If there is NO bet cart (e.g. a confirmed/placed bet slip or a dedicated slip vi
 
 For each leg:
 - "event" = the match (teams/players) formatted as "Team A - Team B". NEVER put league/tournament/sport names here.
-- "selection" = the specific outcome chosen (e.g. "1", "X", "2", "Over 2.5", "Câștigător Team A"). In Romanian apps, the bet cart shows this as: market type (e.g. "Final", "Câștigător") followed by the pick.
-- "odds" = the numeric odds for this leg. In the bet cart, odds are shown next to each selection.
+- "selection" MUST include the FULL market name AND the chosen outcome together. Examples:
+  - "Total cornere Sub 9.5" (not just "Sub 9.5")
+  - "Total goluri AC Milan Peste 2.5" (not just "Peste 2.5")
+  - "Final 1" (not just "1")
+  - "Câștigător Parivision"
+  - "Handicap -1.5"
+  The market name provides essential context — "Sub 9.5" alone is meaningless without knowing it refers to corners, goals, cards, etc.
+- "odds" = the numeric odds for this leg. In the bet cart, odds are shown next to each selection. For Bet Builder bets, individual leg odds may not be visible — set to null.
 
 Other rules:
-- Each unique match = ONE leg. Never duplicate a match.
+- For Bet Builder / Same Game Multi bets: create a SEPARATE leg for each selection, all sharing the same event. Set bet_type to "system".
+- For regular multi bets across different matches: one leg per match.
 - "total_odds" = the combined odds (labeled "Cotă totală" or "Cotă"). For single bets, this equals the leg odds.
 - "is_live" = true if the slip shows "LIVE", "In-Play", "Repriza", or a running match clock.
 - "match_time" = scheduled start time if visible (format YYYY-MM-DDTHH:MM, Romania time). Resolve relative dates ("Astăzi", "maine") relative to today.
