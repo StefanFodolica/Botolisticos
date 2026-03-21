@@ -41,6 +41,11 @@ def main() -> None:
     # Register handlers
     app.add_handler(CommandHandler("bet", handle_bet))
     app.add_handler(CommandHandler("approve", handle_approve))
+    # Handle /bet sent as a photo caption (e.g., photo with "/bet 50")
+    app.add_handler(MessageHandler(
+        filters.PHOTO & filters.CaptionRegex(r"^/bet\b"),
+        handle_bet,
+    ))
     app.add_handler(MessageHandler(
         filters.PHOTO & filters.ChatType.GROUPS,
         handle_media_group_photo,
