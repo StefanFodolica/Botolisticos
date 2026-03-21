@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import logging
 
+from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters
 
 from config import Config
@@ -45,8 +46,14 @@ def main() -> None:
         handle_media_group_photo,
     ))
 
+    # Debug: log ALL incoming updates
+    async def debug_log(update: Update, context) -> None:
+        logger.info(f"DEBUG update received: {update}")
+
+    app.add_handler(MessageHandler(filters.ALL, debug_log), group=99)
+
     logger.info("Bot starting in polling mode...")
-    app.run_polling(drop_pending_updates=True)
+    app.run_polling(drop_pending_updates=True, allowed_updates=Update.ALL_TYPES)
 
 
 if __name__ == "__main__":
