@@ -45,8 +45,10 @@ class SheetsClient:
             if col_a[i].strip() == "":
                 insert_row = i + 1
                 break
-        cell_range = f"A{insert_row}"
-        self._main.update(cell_range, [row], value_input_option="USER_ENTERED")
+        # Only write data columns (A-F), leave formula columns untouched
+        data_cols = row[:6]
+        cell_range = f"A{insert_row}:F{insert_row}"
+        self._main.update(cell_range, [data_cols], value_input_option="USER_ENTERED")
 
     def get_all_pending(self) -> list[list[str]]:
         all_rows = self._pending.get_all_values()
