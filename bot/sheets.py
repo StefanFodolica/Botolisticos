@@ -17,7 +17,7 @@ class SheetsClient:
         gc = gspread.service_account_from_dict(service_account_info)
         spreadsheet = gc.open_by_key(sheet_id)
         self._pending = spreadsheet.worksheet("PENDING")
-        self._main = spreadsheet.worksheet("MAIN")
+        self._main = spreadsheet.worksheet("PARIURI")
         self._flagged = spreadsheet.worksheet("FLAGGED")
         self._balance = spreadsheet.worksheet("BALANCE")
 
