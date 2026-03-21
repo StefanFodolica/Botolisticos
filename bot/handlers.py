@@ -153,7 +153,7 @@ async def handle_bet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
 
     # Format sheet data
     date_str = msg_time.strftime("%d.%m.%Y")
-    miza_str = f"{amount:.2f} {currency}"
+    miza_str = f"{amount:.2f}"
 
     if parsed_bet.extractable:
         meci = "\n".join(leg.event for leg in parsed_bet.legs)
