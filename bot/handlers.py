@@ -129,7 +129,6 @@ async def handle_bet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
             logger.error(f"Vision API retry failed for user {user.id}: {e2}")
             sheets.write_flagged(
                 date=msg_time.strftime("%d.%m.%Y"),
-                ora=msg_time.strftime("%H:%M"),
                 parior=parior_name,
                 meci="",
                 pariu="",
@@ -154,7 +153,6 @@ async def handle_bet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
 
     # Format sheet data
     date_str = msg_time.strftime("%d.%m.%Y")
-    ora_str = msg_time.strftime("%H:%M")
     miza_str = f"{amount:.2f} {currency}"
 
     if parsed_bet.extractable:
@@ -168,12 +166,12 @@ async def handle_bet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
 
     if motiv:
         sheets.write_flagged(
-            date=date_str, ora=ora_str, parior=parior_name,
+            date=date_str, parior=parior_name,
             meci=meci, pariu=pariu, cota=cota, miza=miza_str, motiv=motiv,
         )
     else:
         sheets.write_pending(
-            date=date_str, ora=ora_str, parior=parior_name,
+            date=date_str, parior=parior_name,
             meci=meci, pariu=pariu, cota=cota, miza=miza_str,
         )
         await message.reply_text("✅ Bilet inregistrat")
@@ -285,8 +283,8 @@ async def handle_approve(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         try:
             sheets.write_main(row)
 
-            parior_name = row[2]
-            miza_str = row[6]
+            parior_name = row[1]
+            miza_str = row[5]
 
             col = sheets.find_column_by_name(parior_name)
 

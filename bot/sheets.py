@@ -22,18 +22,18 @@ class SheetsClient:
         self._balance = spreadsheet.worksheet("BALANCE")
 
     def write_pending(
-        self, date: str, ora: str, parior: str, meci: str, pariu: str, cota: str, miza: str
+        self, date: str, parior: str, meci: str, pariu: str, cota: str, miza: str
     ) -> None:
         self._pending.append_row(
-            [date, ora, parior, meci, pariu, cota, miza],
+            [date, parior, meci, pariu, cota, miza],
             value_input_option="USER_ENTERED",
         )
 
     def write_flagged(
-        self, date: str, ora: str, parior: str, meci: str, pariu: str, cota: str, miza: str, motiv: str
+        self, date: str, parior: str, meci: str, pariu: str, cota: str, miza: str, motiv: str
     ) -> None:
         self._flagged.append_row(
-            [date, ora, parior, meci, pariu, cota, miza, motiv],
+            [date, parior, meci, pariu, cota, miza, motiv],
             value_input_option="USER_ENTERED",
         )
 
@@ -87,13 +87,13 @@ class SheetsClient:
             if len(all_rows) <= 1:
                 continue
             for row in all_rows[1:]:
-                if len(row) >= 7:
+                if len(row) >= 6:
                     rows.append({
                         "date": row[0],
-                        "parior": row[2],
-                        "meci": row[3],
-                        "pariu": row[4],
-                        "total_odds": row[5],
+                        "parior": row[1],
+                        "meci": row[2],
+                        "pariu": row[3],
+                        "total_odds": row[4],
                     })
         return rows
 
