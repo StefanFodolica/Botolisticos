@@ -38,7 +38,15 @@ class SheetsClient:
         )
 
     def write_main(self, row: list[str]) -> None:
-        self._main.append_row(row, value_input_option="USER_ENTERED")
+        # Find first empty row (by DATA column) to avoid writing past formulas
+        col_a = self._main.col_values(1)
+        insert_row = len(col_a) + 1
+        for i in range(1, len(col_a)):  # skip header
+            if col_a[i].strip() == "":
+                insert_row = i + 1
+                break
+        cell_range = f"A{insert_row}"
+        self._main.update(cell_range, [row], value_input_option="USER_ENTERED")
 
     def get_all_pending(self) -> list[list[str]]:
         all_rows = self._pending.get_all_values()
