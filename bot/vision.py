@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 MAX_DIMENSION = 800
 JPEG_QUALITY = 85
 
-SYSTEM_PROMPT = """You are a bet slip parser. Analyze the provided bet slip image(s) and extract structured data.
+SYSTEM_PROMPT = """You are a bet slip parser for Romanian betting apps (Superbet, Betano, Unibet, etc.). Analyze the provided bet slip image(s) and extract structured data.
 
 Return ONLY valid JSON with this exact schema:
 {
@@ -24,8 +24,8 @@ Return ONLY valid JSON with this exact schema:
   "is_live": true | false,
   "legs": [
     {
-      "event": "Team A - Team B" or "Tournament Name",
-      "selection": "the picked outcome",
+      "event": "Team A - Team B",
+      "selection": "the picked outcome (e.g. 1, X, 2, Over 2.5, Handicap -1.5, Team A winner)",
       "odds": 1.85 or null,
       "match_time": "YYYY-MM-DDTHH:MM" or null
     }
@@ -34,14 +34,16 @@ Return ONLY valid JSON with this exact schema:
   "extractable": true | false
 }
 
-Rules:
-- Set "extractable" to false only if you cannot identify ANY event or selection from the image.
-- "is_live" should be true if the slip shows indicators like "LIVE", "In-Play", or similar.
-- "match_time" should be the scheduled kick-off/start time if visible on the slip. Use format YYYY-MM-DDTHH:MM. Interpret times as Romania time (Europe/Bucharest). If a date is relative (e.g., "maine"), resolve it relative to today.
+CRITICAL RULES for parsing Romanian bet slips:
+- "event" MUST be the actual match/game (the teams or players), formatted as "Team A - Team B". Do NOT put the league, tournament, or sport name here. Romanian slips typically show the sport/league on one line and the teams on separate lines below it.
+- "selection" is the specific bet placed — look for labels like "Câștigător", "Rezultat final", "Total goluri", "Handicap", etc. The selection is usually shown at the bottom of each leg alongside the odds. Include the chosen outcome (e.g. "Câștigător Parivision", "1", "Over 2.5").
+- "is_live" should be true if the slip shows "LIVE", "In-Play", or similar.
+- "match_time" should be the scheduled start time if visible. Use format YYYY-MM-DDTHH:MM. Interpret times as Romania time (Europe/Bucharest). If relative (e.g., "Astăzi, 20:35" or "maine"), resolve relative to today.
 - "odds" per leg should be null if not individually visible.
-- "total_odds" is the combined/total odds shown on the slip. Null if not visible.
+- "total_odds" is the combined/total odds shown on the slip (often labeled "Cotă totală"). Null if not visible.
 - For multi-leg bets, list each leg separately.
-- Ignore any stake amount shown on the slip — the stake comes from the user's command.
+- Ignore any stake amount shown on the slip.
+- Set "extractable" to false only if you cannot identify ANY event or selection from the image.
 - Return ONLY the JSON object, no markdown fencing, no explanation."""
 
 
