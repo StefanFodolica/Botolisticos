@@ -99,9 +99,10 @@ def _build_vision_messages(
             },
         })
 
-    from datetime import date
-    today = date.today().isoformat()
-    prompt_text = f"Today's date is {today}. Parse this bet slip and return the JSON."
+    from datetime import datetime as _dt
+    from zoneinfo import ZoneInfo
+    today = _dt.now(ZoneInfo("Europe/Bucharest")).strftime("%Y-%m-%d")
+    prompt_text = f"Today's date is {today} (Romania time). Parse this bet slip and return the JSON."
     if context:
         prompt_text += f"\n\nAdditional context from the user: {context}"
 
