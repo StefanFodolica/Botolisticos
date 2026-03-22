@@ -96,11 +96,16 @@ async def handle_bet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
             photo_file = await message.photo[-1].get_file()
             photo_bytes = await photo_file.download_as_bytearray()
             photos.append(bytes(photo_bytes))
-        elif message.reply_to_message and message.reply_to_message.photo:
+        elif message.reply_to_message:
             reply_msg = message.reply_to_message
-            photo_file = await reply_msg.photo[-1].get_file()
-            photo_bytes = await photo_file.download_as_bytearray()
-            photos.append(bytes(photo_bytes))
+            # Check if reply is to a media group — retrieve all stored photos
+            reply_mg_id = reply_msg.media_group_id
+            if reply_mg_id and f"stored_media_group_{reply_mg_id}" in context.bot_data:
+                photos = context.bot_data[f"stored_media_group_{reply_mg_id}"]
+            elif reply_msg.photo:
+                photo_file = await reply_msg.photo[-1].get_file()
+                photo_bytes = await photo_file.download_as_bytearray()
+                photos.append(bytes(photo_bytes))
     except Exception as e:
         logger.error(f"Photo download failed for user {user.id}: {e}")
         await message.reply_text("Nu am putut descarca poza, trimite din nou")
@@ -257,12 +262,13 @@ async def _process_media_group(context: ContextTypes.DEFAULT_TYPE) -> None:
     if not photos:
         return
 
-    # Only process if caption has /bet command
-    if not caption or not caption.startswith("/bet"):
-        return
+    # Always store photos so replies to this media group can access them
+    context.bot_data[f"stored_media_group_{group_id}"] = photos
 
-    context.bot_data[f"media_group_photos_{group_id}"] = photos
-    await handle_bet(update, context)
+    # If caption has /bet command, process immediately
+    if caption and caption.startswith("/bet"):
+        context.bot_data[f"media_group_photos_{group_id}"] = photos
+        await handle_bet(update, context)
 
 
 async def handle_approve(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
