@@ -39,16 +39,19 @@ def main() -> None:
     app.bot_data["admin_user_ids"] = cfg.admin_user_ids
 
     # Register handlers
+    # Media group handler runs first (group -1) to collect all photos
+    # before the caption handler processes just one photo
+    app.add_handler(MessageHandler(
+        filters.PHOTO & filters.HAS_MEDIA_GROUP_ID,
+        handle_media_group_photo,
+    ), group=-1)
+
     app.add_handler(CommandHandler("bet", handle_bet))
     app.add_handler(CommandHandler("approve", handle_approve))
-    # Handle /bet sent as a photo caption (e.g., photo with "/bet 50")
+    # Handle /bet sent as a single photo caption (non-media-group)
     app.add_handler(MessageHandler(
-        filters.PHOTO & filters.CaptionRegex(r"^/bet\b"),
+        filters.PHOTO & filters.CaptionRegex(r"^/bet\b") & ~filters.HAS_MEDIA_GROUP_ID,
         handle_bet,
-    ))
-    app.add_handler(MessageHandler(
-        filters.PHOTO & filters.ChatType.GROUPS,
-        handle_media_group_photo,
     ))
 
     # Debug: log ALL incoming updates

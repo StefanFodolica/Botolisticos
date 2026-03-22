@@ -207,7 +207,8 @@ def _build_recent_bets_list(sheets: SheetsClient, user_id: int) -> list[dict]:
 # --- Media group handling ---
 
 _media_group_photos: dict[str, list[bytes]] = {}
-_media_group_locks: dict[str, asyncio.Event] = {}
+_media_group_captions: dict[str, str] = {}
+_media_group_started: set[str] = set()
 
 
 async def handle_media_group_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -225,8 +226,13 @@ async def handle_media_group_photo(update: Update, context: ContextTypes.DEFAULT
     photo_bytes = await photo_file.download_as_bytearray()
     _media_group_photos[group_id].append(bytes(photo_bytes))
 
-    if group_id not in _media_group_locks:
-        _media_group_locks[group_id] = asyncio.Event()
+    # Store caption if this photo has one (only first photo in group has caption)
+    caption = message.caption or ""
+    if caption and group_id not in _media_group_captions:
+        _media_group_captions[group_id] = caption
+
+    if group_id not in _media_group_started:
+        _media_group_started.add(group_id)
         context.job_queue.run_once(
             _process_media_group,
             when=2.0,
@@ -245,9 +251,14 @@ async def _process_media_group(context: ContextTypes.DEFAULT_TYPE) -> None:
     update = job_data["update"]
 
     photos = _media_group_photos.pop(group_id, [])
-    _media_group_locks.pop(group_id, None)
+    caption = _media_group_captions.pop(group_id, "")
+    _media_group_started.discard(group_id)
 
     if not photos:
+        return
+
+    # Only process if caption has /bet command
+    if not caption or not caption.startswith("/bet"):
         return
 
     context.bot_data[f"media_group_photos_{group_id}"] = photos
