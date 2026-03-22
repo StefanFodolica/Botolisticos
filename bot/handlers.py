@@ -238,22 +238,14 @@ async def handle_media_group_photo(update: Update, context: ContextTypes.DEFAULT
 
     if group_id not in _media_group_started:
         _media_group_started.add(group_id)
-        context.job_queue.run_once(
-            _process_media_group,
-            when=2.0,
-            data={
-                "group_id": group_id,
-                "update": update,
-            },
-            name=f"media_group_{group_id}",
-        )
+        asyncio.create_task(_process_media_group(group_id, update, context))
 
 
-async def _process_media_group(context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Process a collected media group after the delay."""
-    job_data = context.job.data
-    group_id = job_data["group_id"]
-    update = job_data["update"]
+async def _process_media_group(
+    group_id: str, update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    """Process a collected media group after a delay."""
+    await asyncio.sleep(2.0)
 
     photos = _media_group_photos.pop(group_id, [])
     caption = _media_group_captions.pop(group_id, "")
