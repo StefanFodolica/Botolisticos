@@ -72,7 +72,7 @@ def _check_duplicate(
 
 def _normalize_legs(parsed: ParsedBet) -> list[tuple[str, str]]:
     return sorted(
-        (leg.event.strip().lower(), leg.selection.strip().lower())
+        ((leg.event or "").strip().lower(), (leg.selection or "").strip().lower())
         for leg in parsed.legs
     )
 
