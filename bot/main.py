@@ -7,6 +7,14 @@ import logging
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters
 
+
+class _MediaGroupFilter(filters.MessageFilter):
+    def filter(self, message):
+        return message.media_group_id is not None
+
+
+_is_media_group = _MediaGroupFilter()
+
 from config import Config
 from bot.handlers import handle_bet, handle_approve, handle_media_group_photo
 from bot.sheets import SheetsClient
@@ -42,7 +50,7 @@ def main() -> None:
     # Media group handler runs first (group -1) to collect all photos
     # before the caption handler processes just one photo
     app.add_handler(MessageHandler(
-        filters.PHOTO & filters.HAS_MEDIA_GROUP_ID,
+        filters.PHOTO & _is_media_group,
         handle_media_group_photo,
     ), group=-1)
 
@@ -50,7 +58,7 @@ def main() -> None:
     app.add_handler(CommandHandler("approve", handle_approve))
     # Handle /bet sent as a single photo caption (non-media-group)
     app.add_handler(MessageHandler(
-        filters.PHOTO & filters.CaptionRegex(r"^/bet\b") & ~filters.HAS_MEDIA_GROUP_ID,
+        filters.PHOTO & filters.CaptionRegex(r"^/bet\b") & ~_is_media_group,
         handle_bet,
     ))
 
