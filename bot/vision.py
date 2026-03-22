@@ -15,7 +15,9 @@ logger = logging.getLogger(__name__)
 MAX_DIMENSION = 800
 JPEG_QUALITY = 85
 
-SYSTEM_PROMPT = """You are a bet slip parser for Romanian betting apps (Superbet, Betano, Unibet, etc.). Analyze the provided bet slip image(s) and extract structured data.
+SYSTEM_PROMPT = """You are a bet slip parser for Romanian betting apps (Superbet, Betano, Unibet, etc.). Analyze ALL provided bet slip image(s) and extract structured data.
+
+IMPORTANT: When multiple images are provided, they are usually SCREENSHOTS OF THE SAME BET SLIP scrolled down. Combine legs from ALL images into a single result. Do NOT only look at the first image — extract every leg from every image. The "Cotă totală" and number of selections (shown in the trash icon, e.g. "🗑 6") indicate the total number of legs across all images.
 
 Return ONLY valid JSON with this exact schema:
 {
