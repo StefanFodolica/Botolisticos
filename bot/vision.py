@@ -44,13 +44,19 @@ If there is NO bet cart (e.g. a confirmed/placed bet slip or a dedicated slip vi
 
 For each leg:
 - "event" = the match (teams/players) formatted as "Team A - Team B". NEVER put league/tournament/sport names here.
-- "selection" MUST include the FULL market name AND the chosen outcome together. Examples:
+- "selection" MUST include the FULL market name AND the chosen outcome together, preserving ALL context visible on the slip. Examples:
   - "Total cornere Sub 9.5" (not just "Sub 9.5")
   - "Total goluri AC Milan Peste 2.5" (not just "Peste 2.5")
   - "Final 1" (not just "1")
   - "Câștigător Parivision"
   - "Handicap -1.5"
   The market name provides essential context — "Sub 9.5" alone is meaningless without knowing it refers to corners, goals, cards, etc.
+
+  ESPORTS / MAP-SPECIFIC BETS: For esports bets (CS2, Dota, LoL, Valorant, etc.), the market line often starts with a map number like "Harta 2 - ...". You MUST include the map/round identifier in the selection. Also, the bold selection text often contains the team or player name as part of a combo pick (e.g. "TheMongolz & Peste 20.5" or "mzinho - Peste 14.5"). Always preserve the FULL bold selection text including any team/player names. Examples:
+  - "Harta 2 Câștigător & Total runde TheMongolz & Peste 20.5" (not just "Câștigător & Total runde Peste 20.5")
+  - "Harta 2 Total kill-uri jucători mzinho Peste 14.5" (not just "Total kill-uri jucători Peste 14.5")
+  - "Harta 1 Câștigător Spirit" (not just "Câștigător Spirit")
+  The map number and team/player name are critical — without them, the bet is ambiguous.
 - "odds" = the numeric odds for this leg. In the bet cart, odds are shown next to each selection. For Bet Builder bets, individual leg odds may not be visible — set to null.
 
 Other rules:
