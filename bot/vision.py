@@ -52,11 +52,14 @@ For each leg:
   - "Handicap -1.5"
   The market name provides essential context — "Sub 9.5" alone is meaningless without knowing it refers to corners, goals, cards, etc.
 
-  ESPORTS / MAP-SPECIFIC BETS: For esports bets (CS2, Dota, LoL, Valorant, etc.), the market line often starts with a map number like "Harta 2 - ...". You MUST include the map/round identifier in the selection. Also, the bold selection text often contains the team or player name as part of a combo pick (e.g. "TheMongolz & Peste 20.5" or "mzinho - Peste 14.5"). Always preserve the FULL bold selection text including any team/player names. Examples:
+  ESPORTS / MAP-SPECIFIC BETS: For esports bets (CS2, Dota, LoL, Valorant, etc.), slips show a map/game identifier like "Harta 2 - ...", "GAME 1", "GAME 2", "MAP 1", etc. You MUST include this map/game identifier at the START of the selection. Also, the bold selection text often contains the team or player name as part of a combo pick (e.g. "TheMongolz & Peste 20.5" or "mzinho - Peste 14.5"). Always preserve the FULL bold selection text including any team/player names. Examples:
   - "Harta 2 Câștigător & Total runde TheMongolz & Peste 20.5" (not just "Câștigător & Total runde Peste 20.5")
   - "Harta 2 Total kill-uri jucători mzinho Peste 14.5" (not just "Total kill-uri jucători Peste 14.5")
   - "Harta 1 Câștigător Spirit" (not just "Câștigător Spirit")
-  The map number and team/player name are critical — without them, the bet is ambiguous.
+  - "Game 1 1st Half Winner / Map Winner VIT / VIT" (not just "1st Half Winner / Map Winner VIT / VIT")
+  - "Game 2 PRV to Win 8 Rounds No" (not just "PRV to Win 8 Rounds No")
+  - "Game 2 Most Pistol Rounds 2-Way VIT" (not just "Most Pistol Rounds 2-Way VIT")
+  The map/game number and team/player name are critical — without them, the bet is ambiguous.
 - "odds" = the numeric odds for this leg. In the bet cart, odds are shown next to each selection. For Bet Builder bets, individual leg odds may not be visible — set to null.
 
 Other rules:
