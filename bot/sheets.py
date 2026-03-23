@@ -107,6 +107,50 @@ class SheetsClient:
                     })
         return rows
 
+    def get_balance(self, col: int) -> float | None:
+        """Read the balance value from row 4 of the BALANCE sheet."""
+        try:
+            val = self._balance.cell(4, col).value
+            if val is None or str(val).strip() == "":
+                return None
+            return float(str(val).replace(",", ""))
+        except (ValueError, TypeError):
+            return None
+
+    def get_active_bets_total(self, parior_name: str) -> float:
+        """Sum MIZA from PARIURI rows where parior matches and STATUS is empty."""
+        all_rows = self._main.get_all_values()
+        total = 0.0
+        for row in all_rows[1:]:  # skip header
+            if len(row) < 6:
+                continue
+            if row[1].strip().lower() != parior_name.strip().lower():
+                continue
+            # STATUS is column G (index 6) — empty means active
+            status = row[6].strip() if len(row) > 6 else ""
+            if status:
+                continue
+            try:
+                total += float(row[5].strip().split()[0])
+            except (ValueError, IndexError):
+                continue
+        return total
+
+    def get_pending_bets_total(self, parior_name: str) -> float:
+        """Sum MIZA from PENDING rows where parior matches."""
+        all_rows = self._pending.get_all_values()
+        total = 0.0
+        for row in all_rows[1:]:  # skip header
+            if len(row) < 6:
+                continue
+            if row[1].strip().lower() != parior_name.strip().lower():
+                continue
+            try:
+                total += float(row[5].strip().split()[0])
+            except (ValueError, IndexError):
+                continue
+        return total
+
     def get_parior_name_for_user(self, user_id: int) -> str | None:
         """Get the display name from BALANCE row 3 for a user ID."""
         col = self.find_user_column(user_id)

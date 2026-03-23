@@ -263,6 +263,40 @@ async def _process_media_group(
         await handle_bet(update, context)
 
 
+async def handle_balance(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle /balance command — show user's balance summary."""
+    message = update.effective_message
+    user = update.effective_user
+    sheets: SheetsClient = context.bot_data["sheets"]
+
+    user_col = sheets.find_user_column(user.id)
+    if user_col is None:
+        await message.reply_text("Nu esti inregistrat. Contacteaza adminul.")
+        return
+
+    parior_name = sheets.get_parior_name_for_user(user.id)
+    if not parior_name:
+        parior_name = user.first_name or user.username or str(user.id)
+
+    balance = sheets.get_balance(user_col)
+    active = sheets.get_active_bets_total(parior_name)
+    pending = sheets.get_pending_bets_total(parior_name)
+    total_bets = active + pending
+    balance_after = (balance - pending) if balance is not None else None
+
+    balance_str = f"{balance:,.2f}" if balance is not None else "N/A"
+    after_str = f"{balance_after:,.2f}" if balance_after is not None else "N/A"
+
+    text = (
+        f"Balanta: {balance_str} RON\n"
+        f"Pariuri active: {active:,.2f} RON\n"
+        f"Pariuri in asteptare: {pending:,.2f} RON\n"
+        f"Total pariuri: {total_bets:,.2f} RON\n"
+        f"Balanta dupa aprobare: {after_str} RON"
+    )
+    await message.reply_text(text)
+
+
 async def handle_approve(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle /approve command — move PENDING to MAIN, update BALANCE."""
     user = update.effective_user

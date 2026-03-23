@@ -16,7 +16,7 @@ class _MediaGroupFilter(filters.MessageFilter):
 _is_media_group = _MediaGroupFilter()
 
 from config import Config
-from bot.handlers import handle_bet, handle_approve, handle_media_group_photo
+from bot.handlers import handle_bet, handle_approve, handle_balance, handle_media_group_photo
 from bot.sheets import SheetsClient
 
 logging.basicConfig(
@@ -56,6 +56,7 @@ def main() -> None:
 
     app.add_handler(CommandHandler("bet", handle_bet))
     app.add_handler(CommandHandler("approve", handle_approve))
+    app.add_handler(CommandHandler("balance", handle_balance))
     # Handle /bet sent as a single photo caption (non-media-group)
     app.add_handler(MessageHandler(
         filters.PHOTO & filters.CaptionRegex(r"^/bet\b") & ~_is_media_group,
