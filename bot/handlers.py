@@ -170,16 +170,44 @@ async def handle_bet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         cota = ""
 
     if motiv:
-        sheets.write_flagged(
-            date=date_str, parior=parior_name,
-            meci=meci, pariu=pariu, cota=cota, miza=miza_str, motiv=motiv,
-        )
+        try:
+            sheets.write_flagged(
+                date=date_str, parior=parior_name,
+                meci=meci, pariu=pariu, cota=cota, miza=miza_str, motiv=motiv,
+            )
+        except Exception as e:
+            logger.error(
+                "write_flagged failed for user %s motiv=%r: %s",
+                user.id, motiv, e, exc_info=True,
+            )
+            await message.reply_text("Eroare la inregistrare, incearca din nou")
+            return
+        await message.reply_text(_format_flagged_reply(motiv))
     else:
-        sheets.write_pending(
-            date=date_str, parior=parior_name,
-            meci=meci, pariu=pariu, cota=cota, miza=miza_str,
-        )
+        try:
+            sheets.write_pending(
+                date=date_str, parior=parior_name,
+                meci=meci, pariu=pariu, cota=cota, miza=miza_str,
+            )
+        except Exception as e:
+            logger.error(
+                "write_pending failed for user %s: %s",
+                user.id, e, exc_info=True,
+            )
+            await message.reply_text("Eroare la inregistrare, incearca din nou")
+            return
         await message.reply_text("✅ Bilet inregistrat")
+
+
+def _format_flagged_reply(motiv: str) -> str:
+    """Translate a validation motiv into a user-facing Romanian message."""
+    messages = {
+        "incomplete": "⚠️ Nu am putut citi biletul. Trimite o poza mai clara.",
+        "odds mismatch": "⚠️ Cota totala nu corespunde cu cotele individuale. Biletul a fost marcat pentru verificare.",
+        "duplicate": "⚠️ Pariu duplicat. A fost marcat pentru verificare.",
+        "pre-match expired": "⚠️ Pariu pre-match pentru un meci deja inceput. A fost marcat pentru verificare.",
+    }
+    return messages.get(motiv, f"⚠️ Bilet marcat pentru verificare: {motiv}")
 
 
 def _build_recent_bets_list(sheets: SheetsClient, user_id: int) -> list[dict]:

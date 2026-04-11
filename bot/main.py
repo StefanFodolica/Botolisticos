@@ -5,7 +5,7 @@ import json
 import logging
 
 from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters
 
 
 class _MediaGroupFilter(filters.MessageFilter):
@@ -68,6 +68,24 @@ def main() -> None:
         logger.info(f"DEBUG update received: {update}")
 
     app.add_handler(MessageHandler(filters.ALL, debug_log), group=99)
+
+    # Global error handler — makes any uncaught exception in any handler
+    # visible in logs AND replies to the user instead of dying silently.
+    async def on_error(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+        logger.error(
+            "Unhandled exception while processing update: %s",
+            context.error,
+            exc_info=context.error,
+        )
+        if isinstance(update, Update) and update.effective_message is not None:
+            try:
+                await update.effective_message.reply_text(
+                    "Eroare interna, contacteaza adminul"
+                )
+            except Exception as reply_err:
+                logger.error("Failed to send error reply: %s", reply_err)
+
+    app.add_error_handler(on_error)
 
     logger.info("Bot starting in polling mode...")
     app.run_polling(drop_pending_updates=True, allowed_updates=Update.ALL_TYPES)

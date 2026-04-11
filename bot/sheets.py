@@ -24,18 +24,24 @@ class SheetsClient:
     def write_pending(
         self, date: str, parior: str, meci: str, pariu: str, cota: str, miza: str
     ) -> None:
-        self._pending.append_row(
-            [date, parior, meci, pariu, cota, miza],
-            value_input_option="USER_ENTERED",
+        row = [date, parior, meci, pariu, cota, miza]
+        logger.info(
+            "write_pending -> ws id=%s title=%r row=%s",
+            self._pending.id, self._pending.title, row,
         )
+        result = self._pending.append_row(row, value_input_option="USER_ENTERED")
+        logger.info("write_pending result: %s", result)
 
     def write_flagged(
         self, date: str, parior: str, meci: str, pariu: str, cota: str, miza: str, motiv: str
     ) -> None:
-        self._flagged.append_row(
-            [date, parior, meci, pariu, cota, miza, motiv],
-            value_input_option="USER_ENTERED",
+        row = [date, parior, meci, pariu, cota, miza, motiv]
+        logger.info(
+            "write_flagged -> ws id=%s title=%r row=%s",
+            self._flagged.id, self._flagged.title, row,
         )
+        result = self._flagged.append_row(row, value_input_option="USER_ENTERED")
+        logger.info("write_flagged result: %s", result)
 
     def write_main(self, row: list[str]) -> None:
         # Find first empty row (by DATA column) to avoid writing past formulas
